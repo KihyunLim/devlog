@@ -3,8 +3,8 @@
 1. 프로젝트 생성
 - help > Eclipse MarketPlace > sts 검색 > Spring Tools 3 머시기 release 설치
 - new > spring legacy project > project name 입력 > templates : spring MVC project > next > top-level package : "com.SampleBoard.khlim" > finish > 프로젝트 생성
-
-1. 프로젝트 설정 변경
+<br>
+2. 프로젝트 설정 변경
 - project 우클릭 > properties 
     - project facets > java : 1.8
     - runtimes : apache tomcat v8.0
