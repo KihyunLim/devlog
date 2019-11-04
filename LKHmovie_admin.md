@@ -2,7 +2,8 @@
 <span style="color:red">추후 확인해봐야 할것</span>
 - 4) 처음 서버 시작 시 로그가 두번씩 중복으로 출력 됨
 - 4) 로깅 설정 이후 src/test/java에서 junit 테스트 getConnection에서 에러 남
-- 4) 쿼리 로그 출력 되는지는 추후에 기능 구현 해봐야 확인이 됨
+  - dataSourceSpied, dataSource 이 두개가 NoUniqueBeanDefinitionException 에러남
+  - 참고 : https://www.lesstif.com/pages/viewpage.action?pageId=20774954
 
 ---
 
@@ -630,3 +631,237 @@ public String dbTest(Model model) {
 		// ~~~
 ```
 
+---
+
+## 5. test MVC 작성
+- VO 작성
+  - 사용할 변수 작성 후 `ctrl + shift + s`로 getter/setter 및 toString() 생성
+```java
+// TestListVO
+
+package com.LKHmovie.biz.test.list;
+
+import java.util.Date;
+
+public class TestListVO {
+
+	private String id;
+	private String password;
+	private String name;
+	private Date createDate;
+	private String phone;
+	
+	public String getId() {
+		return id;
+	}
+	public void setId(String id) {
+		this.id = id;
+	}
+	public String getPassword() {
+		return password;
+	}
+	public void setPassword(String password) {
+		this.password = password;
+	}
+	public String getName() {
+		return name;
+	}
+	public void setName(String name) {
+		this.name = name;
+	}
+	public Date getCreateDate() {
+		return createDate;
+	}
+	public void setCreateDate(Date createDate) {
+		this.createDate = createDate;
+	}
+	public String getPhone() {
+		return phone;
+	}
+	public void setPhone(String phone) {
+		this.phone = phone;
+	}
+	
+	@Override
+	public String toString() {
+		return "ListVO [id=" + id + ", password=" + password + ", name=" + name + ", createDate=" + createDate
+				+ ", phone=" + phone + "]";
+	}
+}
+```
+
+- sql mapper 추가
+  - 테스트용 typeAlias와 mapper 추가
+```xml
+<!-- sql-map-config.xml -->
+
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+
+	<typeAliases>
+		<typeAlias alias="testList" type="com.LKHmovie.biz.test.list.TestListVO"></typeAlias>
+	</typeAliases>
+
+	<mappers>
+		<mapper resource="mappings/test-mapping.xml" />
+	</mappers>
+</configuration>
+```
+
+- sql mapping 파일 추가
+  - src/main/resources/mappings에 test-mapping.xml 추가
+```xml
+<!-- test-mapping.xml -->
+
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+<mapper namespace="TestListDAO">
+	<select id="getTestList" resultType="testList">
+		SELECT * FROM USERLIST;
+	</select>
+</mapper>
+```
+
+- DAO 추가
+  - src/main/java/com.LKHmovie.biz.test.list.impl에 TestListDAOMybatis.java 추가
+```java
+// TestListDAOMybatis.java
+
+package com.LKHmovie.biz.test.list.impl;
+
+import java.util.List;
+
+import org.mybatis.spring.SqlSessionTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
+
+import com.LKHmovie.biz.test.list.TestListVO;
+
+@Repository
+public class TestListDAOMybatis {
+
+	@Autowired
+	private SqlSessionTemplate mybatis;
+	
+	public List<TestListVO> getTestList() {
+		return mybatis.selectList("TestListDAO.getTestList");
+	}
+}
+```
+
+- service(interface) 추가
+  - src/main/java/com.LKHmovie.biz.test.list에 TestListService.java 추가
+```java
+// TestListService
+
+package com.LKHmovie.biz.test.list;
+
+import java.util.List;
+
+public interface TestListService {
+
+	List<TestListVO> getTestList();
+
+}
+```
+
+- serviceImpl 추가
+  - src/main/java/com.LKHmovie.biz.test.list.impl에 TestListServiceImpl.java 추가
+```java
+// TestListServiceImpl.java
+
+package com.LKHmovie.biz.test.list.impl;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.LKHmovie.biz.test.list.TestListService;
+import com.LKHmovie.biz.test.list.TestListVO;
+
+@Service("testListService")
+public class TestListServiceImpl implements TestListService{
+
+	@Autowired
+	private TestListDAOMybatis listDAO;
+	
+	public List<TestListVO> getTestList() {
+		return listDAO.getTestList();
+	}
+}
+```
+
+- controller 추가
+  - src/main/java/com.LKHmovie.controller.test에 GetTestListController.java 추가
+```java
+// GetTestListController.java
+
+package com.LKHmovie.controller.test;
+
+import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+import com.LKHmovie.biz.test.list.TestListService;
+import com.LKHmovie.biz.test.list.TestListVO;
+
+@Controller
+public class GetTestListController {
+	private static final Logger LOGGER = LoggerFactory.getLogger(GetTestListController.class);
+	
+	@Autowired
+	private TestListService testListService;
+	
+	@RequestMapping(value="/getTestList.do")
+	public String getTestList(Model model) {
+		try {
+			List<TestListVO> testList = testListService.getTestList();
+			
+			model.addAttribute("testList", testList);
+		} catch(Exception e) {
+			LOGGER.error("error message : " + e.getMessage());
+			LOGGER.error("error trace : ", e);
+		}
+		
+		return "home_getListTest";
+	}
+}
+```
+
+- 테스트용 웹페이지 추가
+  - src/main/webapp/WEB-INF/views에 home_getListTest.jsp 추가
+```jsp
+<!-- home_getListTest.jsp -->
+
+<%@ page contentType="text/html; charset=UTF-8"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ page session="false" %>
+<html>
+<head>
+	<title>Home</title>
+</head>
+<body>
+<h1>
+	Hello world!  
+</h1>
+
+<c:forEach items="${testList }" var="test">
+	<p>${test.name }</p>
+</c:forEach>
+
+</body>
+</html>
+```
+
+---
