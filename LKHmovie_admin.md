@@ -865,3 +865,239 @@ public class GetTestListController {
 ```
 
 ---
+
+## 6. AOP 추가
+- dependency 추가
+```xml
+<!-- pom.xml -->
+
+		<!-- ~~~ -->
+		<!-- AspectJ -->
+		<dependency>
+			<groupId>org.aspectj</groupId>
+			<artifactId>aspectjrt</artifactId>
+			<version>${org.aspectj-version}</version>
+		</dependency>	
+		<dependency>
+		    <groupId>org.aspectj</groupId>
+		    <artifactId>aspectjweaver</artifactId>
+		    <version>1.9.4</version>
+		</dependency>
+		
+		<!-- Logging -->
+		<!-- ~~~ -->
+```
+
+- AOP 설정 등록
+  - applicationContext.xml에서 Namespaces 탭 클릭 > aop 선택 후 저장
+```xml
+<!-- applicationContext.xml -->
+
+	<!-- ~~~ -->
+	<!-- 자동 스캔 추가 -->
+	<context:component-scan base-package="com.LKHmovie.biz"></context:component-scan>
+	
+	<!-- AOP -->
+	<aop:aspectj-autoproxy></aop:aspectj-autoproxy>
+
+	<!-- Database info -->
+	<!-- ~~~ -->
+```
+
+- AOP 패키지 생성
+  - com.LKHmovie.biz.common.aop 패키지 생성
+
+- AOP 설정 클래스 생성
+```java
+// PointcutCommon.java
+
+package com.LKHmovie.biz.common.aop;
+
+import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.annotation.Pointcut;
+
+@Aspect
+public class PointcutCommon {
+
+	@Pointcut("execution(* com.LKHmovie.biz..*Impl.*(..))")
+	public void allPointcut() {}
+	
+	@Pointcut("execution(* com.LKHmovie.biz..*Impl.get*(..))")
+	public void getPointcut() {}
+}
+```
+
+- AOP before 추가
+```java
+// BeforeAdvice.java
+
+package com.LKHmovie.biz.common.aop;
+
+import org.aspectj.lang.JoinPoint;
+import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.annotation.Before;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+@Service
+@Aspect
+public class BeforeAdvice {
+
+	private static final Logger LOGGER = LoggerFactory.getLogger(BeforeAdvice.class);
+	
+	@Before("PointcutCommon.allPointcut()")
+	public void beforeLog(JoinPoint jp) {
+		String method = jp.getSignature().getName();
+		Object[] args = jp.getArgs();
+		
+		LOGGER.info("-------------------------------------------------------------------------------------------------------");
+		if(args.length > 0) {
+			LOGGER.info("[Before] " + method + " 메소드 args 정보 : " + args[0].toString());
+		} else {
+			LOGGER.info("[Before] " + method + " 메소드");
+		}
+	}
+}
+```
+
+- AOP around 추가
+```java
+// AroundAdvice.java
+
+package com.LKHmovie.biz.common.aop;
+
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.Around;
+import org.aspectj.lang.annotation.Aspect;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StopWatch;
+
+@Service
+@Aspect
+public class AroundAdvice {
+
+	private static final Logger LOGGER = LoggerFactory.getLogger(AroundAdvice.class);
+	
+	@Around("PointcutCommon.allPointcut()")
+	public Object aroundLog(ProceedingJoinPoint pjp) throws Throwable {
+		String method = pjp.getSignature().getName();
+		
+		StopWatch stopWatch = new StopWatch();
+		stopWatch.start();
+		
+		Object returnObj = pjp.proceed();
+		
+		stopWatch.stop();
+		
+		LOGGER.info("[Around] " + method + " 메소드 수행에 걸린 시간 : " + stopWatch.getTotalTimeMillis() + "(ms)초");
+		
+		return returnObj;
+	}
+}
+```
+
+- AOP afterReturning 추가
+```java
+// AfterReturningAdvice.java
+
+package com.LKHmovie.biz.common.aop;
+
+import org.aspectj.lang.JoinPoint;
+import org.aspectj.lang.annotation.AfterReturning;
+import org.aspectj.lang.annotation.Aspect;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+@Service
+@Aspect
+public class AfterReturningAdvice {
+
+	private static final Logger LOGGER = LoggerFactory.getLogger(AfterReturningAdvice.class);
+	
+	@AfterReturning(pointcut="PointcutCommon.getPointcut()", returning="returnObj")
+	public void afterLog(JoinPoint jp, Object returnObj) {
+		String method = jp.getSignature().getName();
+		
+		if(returnObj != null) {
+			LOGGER.info("[AfterReturning] " + method + " 메소드 리턴값 : " + returnObj.toString());
+		} else {
+			LOGGER.info("[AfterReturning] " + method + " 메소드 리턴값 : null");
+		}
+	}
+}
+```
+
+- AOP after 추가
+```java
+// AfterAdvice.java
+
+package com.LKHmovie.biz.common.aop;
+
+import org.aspectj.lang.annotation.After;
+import org.aspectj.lang.annotation.Aspect;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+@Service
+@Aspect
+public class AfterAdvice {
+
+	private static final Logger LOGGER = LoggerFactory.getLogger(AfterAdvice.class);
+	
+	@After("PointcutCommon.allPointcut()")
+	public void finallyLog() {
+		LOGGER.info("[After] 비즈니스 로직 수행 끝");
+		LOGGER.info("-------------------------------------------------------------------------------------------------------");
+	}
+}
+```
+
+- AOP transaction 인터페이스 추가
+```java
+// PlatformTransactionManager.java
+
+package com.LKHmovie.biz.common.aop;
+
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionException;
+import org.springframework.transaction.TransactionStatus;
+
+public interface PlatformTransactionManager {
+
+	TransactionStatus getTransaction(TransactionDefinition definition) throws TransactionException;
+	void commit(TransactionStatus status) throws TransactionException;
+	void rollback(TransactionStatus status) throws TransactionException;
+}
+```
+
+- AOP transaction 설정 추가
+```xml
+<!-- applicationContext.xml -->
+
+	<!-- ~~~ -->
+		<constructor-arg ref="sqlSession"></constructor-arg>
+	</bean>
+
+	<!-- Transaction 설정 -->
+	<bean id="txManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource"></property>
+	</bean>
+	
+	<tx:advice id="txAdvice" transaction-manager="txManager">
+		<tx:attributes>
+			<tx:method name="get*" read-only="true"/>
+			<tx:method name="*"/>
+		</tx:attributes>
+	</tx:advice>
+	
+	<aop:config>
+		<aop:pointcut expression="execution(* com.LKHmovie.biz..*(..))" id="txPointcut"/>
+		<aop:advisor pointcut-ref="txPointcut" advice-ref="txAdvice"/>
+	</aop:config>
+</beans>
+```
