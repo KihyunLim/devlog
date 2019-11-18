@@ -63,6 +63,9 @@ bean configuration file > file name : servlet-config.xml
 	<!-- 자동스캔 추가 -->
 	<context:component-scan base-package="com.LKHmovie.controller"></context:component-scan>
 
+	<!-- HandlerMapping, HandlerAdapter를 등록 -->
+	<mvc:annotation-driven></mvc:annotation-driven>
+
 	<!-- resolver 설정 추가 -->
 	<bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
 		<property name="prefix" value="/WEB-INF/views/"></property>
@@ -73,7 +76,7 @@ bean configuration file > file name : servlet-config.xml
 
 - web.xml 수정
   - 변경된 root-context와 servlet-context 경로 수정
-  - url패턴 수정
+  - url패턴 설정
   - 인코딩  설정 추가
 ```xml
 <!-- web.xml -->
@@ -107,7 +110,7 @@ bean configuration file > file name : servlet-config.xml
 		
 	<servlet-mapping>
 		<servlet-name>dispatcherServlet</servlet-name>
-		<url-pattern>*.do</url-pattern>
+		<url-pattern>/</url-pattern>
 	</servlet-mapping>
 	
 	<filter>
@@ -1115,15 +1118,14 @@ public interface PlatformTransactionManager {
   - 압축해제 후 `src/main/sebapp/resources`에 dist, pages, plugins 폴더 복사
 
 - bootstrap 파일 매핑 설정 추가
-  - 다른 블로그들에서는 이 코드를 추가해 줬는데 난 있으면 안된다... 일단 주석처리해뒀다.
 ```xml
 <!-- servlet-config.xml -->
 
 	<!-- ~~~ -->
-	<context:component-scan base-package="com.LKHmovie.controller"></context:component-scan>
+	<mvc:annotation-driven></mvc:annotation-driven>
 	
 	<!-- 부트스트랩 추가 -->
-	<!-- <mvc:resources mapping="/resources/**" location="/resources/" /> -->
+	<mvc:resources mapping="/resources/**" location="/resources/" />
 
 	<!-- resolver 설정 추가 -->
 	<!-- ~~~ -->
