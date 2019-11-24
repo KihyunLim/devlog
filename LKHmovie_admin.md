@@ -1108,7 +1108,331 @@ public interface PlatformTransactionManager {
 ---
 
 ## 7. restful 적용
+- postman 설치
+  - 인터넷어 postman 검색해서 프로그램 설치
+  - 로그인 필요
 
+- dependency 추가
+```xml
+<!-- pom.xml -->
+
+		<!-- ~~~ -->
+		<dependencies>
+		<!-- use json -->
+		<dependency>
+		    <groupId>org.codehaus.jackson</groupId>
+		    <artifactId>jackson-mapper-asl</artifactId>
+		    <version>1.9.13</version>
+		</dependency>
+		<dependency>
+		    <groupId>com.fasterxml.jackson.core</groupId>
+		    <artifactId>jackson-databind</artifactId>
+		    <version>2.9.8</version>
+		</dependency>
+		
+		<!-- MyBatis -->
+		<!-- ~~~ -->
+```
+
+- json과 restful 설정 추가
+```xml
+<!-- servlet-config.xml -->
+
+	<!-- ~~~ -->
+	<context:component-scan base-package="com.LKHmovie.controller"></context:component-scan>
+	
+	<!-- HandlerMapping, HandlerAdapter를 등록 -->
+	<mvc:annotation-driven></mvc:annotation-driven>
+	<!-- tomcat의 server.xml에 정의돈 url-pattern "/" 무시하고 현재 DispatcherServlet의 url-pattern으로 설정 -->
+	<mvc:default-servlet-handler/>
+	
+	<!-- 부트스트랩 추가 -->
+	<!-- ~~~ -->
+```
+
+- restful 테스트를 위한 기능 함수 추가
+```xml
+<!-- servlet-config.xml -->
+
+	<!-- ~~~ -->
+			USERLIST;
+	</select>
+	
+	<select id="getTestUser" resultType="testList">
+		SELECT 
+			* 
+		FROM 
+			USERLIST 
+		WHERE 
+			ID = #{id};
+	</select>
+	
+	<insert id="insertTestUser">
+		INSERT
+		INTO
+			USERLIST (
+				ID,
+				PASSWORD,
+				NAME,
+				PHONE
+			)
+			VALUES (
+				#{id},
+				#{password},
+				#{name},
+				#{phone}
+			);
+	</insert>
+	
+	<update id="updateTestUser">
+		UPDATE
+			USERLIST
+		SET
+			PHONE = #{phone}
+		WHERE
+			ID = #{id};
+	</update>
+	
+	<delete id="deleteTestUser">
+		DELETE 
+		FROM
+			USERLIST
+		WHERE
+			ID = #{id};
+	</delete>
+</mapper>
+```
+```java
+// TestListDAO.java
+	// ~~~
+		return mybatis.selectList("TestListDAO.getTestList");
+	}
+	
+	public TestListVO getTestUser(String id) {
+		return mybatis.selectOne("TestListDAO.getTestUser", id);
+	}
+	
+	public void insertTestUser(TestListVO vo) {
+		mybatis.insert("TestListDAO.insertTestUser", vo);
+	}
+	
+	public void updateTestUser(TestListVO vo) {
+		mybatis.update("TestListDAO.updateTestUser", vo);
+	}
+	
+	public void deleteTestUser(String id) {
+		mybatis.delete("TestListDAO.deleteTestUser", id);
+	}
+}
+```
+```java
+// TestListService.java
+
+	// ~~~
+	List<TestListVO> getTestList();
+
+	TestListVO getTestUser(String id);
+	
+	void insertTestUser(TestListVO vo);
+	
+	void updateTestUser(TestListVO vo);
+	
+	void deleteTestUser(String id);
+}
+```
+```java
+// TestListServiceImpl.java
+
+	// ~~~
+		return listDAO.getTestList();
+	}
+
+	@Override
+	public TestListVO getTestUser(String id) {
+		return listDAO.getTestUser(id);
+	}
+
+	@Override
+	public void insertTestUser(TestListVO vo) {
+		listDAO.insertTestUser(vo);
+	}
+	
+	@Override
+	public void updateTestUser(TestListVO vo) {
+		listDAO.updateTestUser(vo);
+	}
+
+	@Override
+	public void deleteTestUser(String id) {
+		listDAO.deleteTestUser(id);
+	}
+}
+```
+
+- restful 테스트용 컨트롤러 추가
+  - `com.LKHmovie.controller.test` 패키지 하위에 컨트롤러 파일 추가
+```java
+// GetTestRestfulController.java
+package com.LKHmovie.controller.test;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import com.LKHmovie.biz.test.list.TestListService;
+import com.LKHmovie.biz.test.list.TestListVO;
+
+@Controller
+@RequestMapping(value="/restful")
+public class GetTestRestfulController {
+	private static final Logger LOGGER = LoggerFactory.getLogger(GetTestRestfulController.class);
+	
+	@Autowired
+	private TestListService testListService;
+	
+	@RequestMapping(value="/testList", method=RequestMethod.GET)
+	@ResponseBody
+	public Map<String, Object> getTestList() {
+		Map<String, Object> result = new HashMap<String, Object>();
+
+		try {
+			List<TestListVO> testList = testListService.getTestList();
+			
+			result.put("result", Boolean.TRUE);
+			result.put("data", testList);
+		} catch(Exception e) {
+			result.put("result", Boolean.FALSE);
+			
+			LOGGER.error("error message : " + e.getMessage());
+			LOGGER.error("error trace : ", e);
+		}
+		
+		return result;
+	}
+	
+	@RequestMapping(value="/testList/{id}", method=RequestMethod.GET)
+	@ResponseBody
+	public Map<String, Object> getTestUser(@PathVariable String id) {
+		Map<String, Object> result = new HashMap<String, Object>();
+		
+		try {
+			TestListVO user = testListService.getTestUser(id);
+			
+			result.put("result", Boolean.TRUE);
+			result.put("data", user);
+		} catch(Exception e) {
+			result.put("result", Boolean.FALSE);
+			
+			LOGGER.error("error message : " + e.getMessage());
+			LOGGER.error("error trace : ", e);
+		}
+		
+		return result;
+	}
+	
+	@RequestMapping(value="/testList", method=RequestMethod.POST, headers={"Content-type=application/json"})
+	@ResponseBody
+	public Map<String, Object> insertTestUser(@RequestBody TestListVO user) {
+		Map<String, Object> result = new HashMap<String, Object>();
+		
+		try {
+			if(user != null) {
+				testListService.insertTestUser(user);
+			}
+			
+			result.put("result", Boolean.TRUE);
+		} catch(Exception e) {
+			result.put("result", Boolean.FALSE);
+			
+			LOGGER.error("error message : " + e.getMessage());
+			LOGGER.error("error trace : ", e);
+		}
+		
+		return result;
+	}
+	
+	@RequestMapping(value="/testList", method=RequestMethod.PUT, headers= {"Content-type=application/json"})
+	@ResponseBody
+	public Map<String, Object> updateTestUser(@RequestBody TestListVO user) {
+		Map<String, Object> result = new HashMap<String, Object>();
+		
+		try {
+			if(user != null) {
+				testListService.updateTestUser(user);
+			}
+			
+			result.put("result", Boolean.TRUE);
+		} catch(Exception e) {
+			result.put("result", Boolean.FALSE);
+			
+			LOGGER.error("error message : " + e.getMessage());
+			LOGGER.error("error trace : ", e);
+		}
+		
+		return result;
+	}
+	
+	@RequestMapping(value="/testList/{id}", method=RequestMethod.DELETE)
+	@ResponseBody
+	public Map<String, Object> deleteTestUser(@PathVariable String id) {
+		Map<String, Object> result = new HashMap<String, Object>();
+		
+		try {
+			testListService.deleteTestUser(id);
+			
+			result.put("result", Boolean.TRUE);
+		} catch(Exception e) {
+			result.put("result", Boolean.FALSE);
+			
+			LOGGER.error("error message : " + e.getMessage());
+			LOGGER.error("error trace : ", e);
+		}
+		
+		return result;
+	}
+}
+```
+
+- postman으로 테스트
+  - launchpad > create a request
+  - 전체 목록 조회 (GET)
+    - GET 선택
+    - url : http://localhost:8080/admin/restful/testList
+    - send 클릭
+  - 단일 조회 (GET)
+    - GET 선택 
+    - url : http://localhost:8080/admin/restful/testList/user4
+    - send 클릭
+  - 등록 (POST)
+    - POST 선택
+    - url : http://localhost:8080/admin/restful/testList
+    - Headers > key : Content-Type
+    - Headers > value : application/json
+    - Body > raw 선택 및 우측의 json 확인
+      - `{"id" : "user4", "password" : "4444", "name" : "사유저", "phone" : "01044445555"}` 입력
+    - send 클릭
+  - 수정 (PUT)
+    - PUT 선택
+    - url : http://localhost:8080/admin/restful/testList
+    - Headers > key : Content-Type
+    - Headers > value : application/json
+    - Body > raw 선택 및 우측의 json 확인
+      - `{"id" : "user4", "phone" : "01044446666"}` 입력
+    - send 클릭
+  - 삭제 (DELETE)
+    - DELETE 선택
+    - url : http://localhost:8080/admin/restful/testList/user4
+    - send 클릭
 
 ---
 
