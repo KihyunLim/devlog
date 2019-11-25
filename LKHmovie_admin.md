@@ -644,6 +644,7 @@ public String dbTest(Model model) {
 
 package com.LKHmovie.biz.test.list;
 
+import java.text.SimpleDateFormat;
 import java.util.Date;
 
 public class TestListVO {
@@ -672,8 +673,9 @@ public class TestListVO {
 	public void setName(String name) {
 		this.name = name;
 	}
-	public Date getCreateDate() {
-		return createDate;
+	public String getCreateDate() {
+		SimpleDateFormat simpleCreateDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		return simpleCreateDate.format(createDate);
 	}
 	public void setCreateDate(Date createDate) {
 		this.createDate = createDate;
@@ -1433,6 +1435,271 @@ public class GetTestRestfulController {
     - DELETE 선택
     - url : http://localhost:8080/admin/restful/testList/user4
     - send 클릭
+
+- web상에서 테스트
+  - 컨트롤러에 restful 테스트 페이지 매핑 함수 추가
+```java
+// HomeController.java
+
+	// ~~~
+		return "home_bootstrapTest2";
+	}
+	
+	@RequestMapping(value = "/testRestful.do", method = RequestMethod.GET)
+	public String testRestful(Model model) {
+		return "home_testRestful";
+	}
+}
+```
+  - ajax통신을 위한 jquery 라이브러리 추가
+    - `src/main/webapp/resources/js/lib` 경로에 jquery-3.3.1.js 추가
+  - `src/main/webapp/WEB-INF/views` 경로에 restful 테스트용 페이지 추가
+```jsp
+<!-- home_testRestful.jsp -->
+
+<%@ page contentType="text/html; charset=UTF-8"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+
+<html>
+<head>
+	<title>Home</title>
+	<script type="text/javascript" src="<c:url value="/resources/js/lib/jquery-3.3.1.js"/>"></script>
+	<script type="text/javascript" src="<c:url value="/resources/js/home_testRestful.js"/>"></script>
+</head>
+<body>
+<h1>
+	Hello world!  
+</h1>
+
+<div>
+	<p>
+		<span>id : </span>
+		<span>
+			<input type="text" class="flagDisabled" id="id" />
+		</span>
+	</p>
+	<p>
+		<span>password : </span>
+		<span>
+			<input type="text" class="flagDisabled" id="password" />
+		</span>
+	</p>
+	<p>
+		<span>name : </span>
+		<span>
+			<input type="text" class="flagDisabled" id="name" />
+		</span>
+	</p>
+	<p>
+		<span>date : </span>
+		<span>
+			<input type="text" class="flagDisabled" id="createDate" />
+		</span>
+	</p>
+	<p>
+		<span>phone : </span>
+		<span>
+			<input type="text" id="phone" />
+		</span>
+	</p>
+	<p>
+		<input type="button" id="btnInsert" value="insert" />
+		<input type="button" id="btnUpdate" value="update" />
+		<input type="button" id="btnReset" value="reset" />
+	</p>
+</div>
+
+<div>
+	<table>
+		<thead>
+			<tr>
+				<th>id</th>
+				<th>name</th>
+			</tr>
+		</thead>
+		<tbody></tbody>
+	</table>
+</div>
+
+</body>
+</html>
+```
+  - ajax 통신을 위한 js 파일 추가
+    - `src/main/webapp/resources/js` 경로에 home_testRestful.js 추가
+```js
+// home_testRestful.js
+
+/**
+ * 
+ */
+
+$(function(){
+	
+	init();
+	bindEvent();
+	
+	function init() {
+		userList();
+	};
+	
+	function bindEvent() {
+		$("body").on("click", "#btnInsert", function() {
+			var reqData = {
+				id : $("#id").val(),
+				password : $("#password").val(),
+				name : $("#name").val(),
+				phone : $("#phone").val()
+			};
+			
+			$.ajax({
+				url : "restful/testList",
+				type : "POST",
+				dataType : "json",
+				data : JSON.stringify(reqData),
+				contentType : "application/json",
+				mimeType : "application/json",
+				error : function(xhr, status, msg) {
+					alert("status : " + status + "/nHttp error msg : " + msg);
+				},
+				success : function(res) {
+					if(res.result) {
+						userList();
+					}
+				}
+			});
+		});
+		
+		$("body").on("click", "#btnUpdate", function() {
+			var reqData = {
+					id : $("#id").val(),
+					phone : $("#phone").val()
+				};
+				
+				$.ajax({
+					url : "restful/testList",
+					type : "PUT",
+					dataType : "json",
+					data : JSON.stringify(reqData),
+					contentType : "application/json",
+					mimeType : "application/json",
+					error : function(xhr, status, msg) {
+						alert("status : " + status + "/nHttp error msg : " + msg);
+					},
+					success : function(res) {
+						if(res.result) {
+							userList();
+						}
+					}
+				});
+		});
+		
+		$("body").on("click", "#btnReset", function() {
+			resetInput(false);
+		});
+		
+		$("body").on("click", ".btnSearch", function(){
+			var id = ($(this).parents("tr").data("info")).id;
+			
+			$.ajax({
+				url : "restful/testList/" + id,
+				type : "GET",
+				contentType : "application/json;charset=utf-8;",
+				dataType : "json",
+				error : function(xhr, status, msg) {
+					alert("status : " + status + "/nHttp error msg : " + msg);
+				},
+				success : function(res) {
+					console.log(res);
+					
+					resetInput(true);
+					
+					$("#id").val(res.data.id);
+					$("#password").val(res.data.password);
+					$("#name").val(res.data.name);
+					$("#createDate").val(res.data.createDate);
+					$("#phone").val(res.data.phone);
+				}
+			});
+		});
+		
+		$("body").on("click", ".btnDelete", function() {
+			var id = ($(this).parents("tr").data("info")).id;
+			var result = confirm(id + "사용자를 삭제하시겠습니까?");
+			
+			if(result) {
+				$.ajax({
+					url : "restful/testList/" + id,
+					type : "DELETE",
+					contentType : "application/json;charset=utf-8;",
+					dataType : "json",
+					error : function(xhr, status, msg) {
+						alert("status : " + status + "/nHttp error msg : " + msg);
+					},
+					success : function(res) {
+						console.log(res);
+						
+						if(res.result) {
+							userList();
+						}
+					}
+				});
+			}
+		});
+	};
+	
+	function resetInput(isDisabled) {
+		if(isDisabled) {
+			$(".flagDisabled").prop("disabled", true);
+		} else {
+			$(".flagDisabled").prop("disabled", false);
+		}
+		
+		$("#id").val("");
+		$("#password").val("");
+		$("#name").val("");
+		$("#createDate").val("");
+		$("#phone").val("");
+	};
+	
+	function userList() {
+		$.ajax({
+			url : "restful/testList",
+			type : "GET",
+			contentType : "application/json;charset=utf-8",
+			dataYtpe : "json",
+			error : function(xhr, status, msg) {
+				alert("status : " + status + "\nHttp error msg : " + msg);
+			},
+			success : userListRender
+		});
+	};
+	
+	function userListRender(xhr) {
+		console.log(xhr.data);
+		$("tbody").empty();
+		
+		$.each(xhr.data, function(idx, item) {
+			$("tbody").append(
+				$("<tr>").data("info", item).append(
+					$("<td>").append(item.id),
+					$("<td>").append(item.name),
+					$("<td>").append(
+						$("<input>").attr({type : "button", value : "search"}).addClass("btnSearch")
+					),
+					$("<td>").append(
+						$("<input>").attr({type : "button", value : "delete"}).addClass("btnDelete")
+					),
+					// 난 히든은 나중에 활용하기에도 html상에도 보여서 좀 아닌거 같기도 하다아
+					$("<td style={display:none}>").append(
+						$("<input>").attr({type : "hidden", value : item.id}).addClass("inpHidden")
+					)
+				)
+			);
+		});
+	};
+});
+```
+
 
 ---
 
