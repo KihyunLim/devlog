@@ -1,10 +1,5 @@
 # project invitation - admin
 
-참고 사이트
-https://inviteyou.kr/dseb200111/
-https://adminlte.io/themes/dev/AdminLTE/index.html
-file:///C:/Users/lkh/Downloads/hookup/index.html
-
 ---
 ## 개발 환경
 
